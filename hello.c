@@ -15,4 +15,3 @@ static void hello_cleanup(void) {
 
 module_init(hello_init);
 module_exit(hello_cleanup);
-
