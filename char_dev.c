@@ -36,10 +36,73 @@ static struct {
 // TODO: Implement these.
 static struct file_operations file_ops;
 
+//////////// FILE OPERATION FUNCTIONS ////////////////
+
+static int dev_open(struct inode *inodep, struct file *filep)
+{
+	++driver.open_count;
+	printk(KERN_INFO "%s: Device has been opened %d time(s)\n", DEVICE_NAME,
+	       driver.open_count);
+	return 0;
+}
+
+static ssize_t dev_read(struct file *filep,
+			char *buffer,
+			size_t len,
+			loff_t *offset)
+{
+	int ret = 0;
+
+	if (driver.message_length < len)
+		len = driver.message_length;
+	ret = copy_to_user(buffer, driver.message_buffer, len);
+
+	if (ret) {
+		printk(KERN_ERR "%s: Could not read %zu bytes of data from "
+		       "userspace.\n", DEVICE_NAME, len);
+		ret = -1;
+		goto exit;
+	}
+	printk("%s: Sent %zu characters to userspace.\n", DEVICE_NAME, len);
+	ret = len;
+
+exit:
+	return ret;
+}
+
+static ssize_t dev_write(struct file *filep,
+			 const char *buffer,
+			 size_t count,
+			 loff_t *offset)
+{
+	// Read message from buffer.
+	snprintf(driver.message_buffer, sizeof(driver.message_buffer),
+		 "%s (%zu)", buffer, count);
+	driver.message_length = strlen(driver.message_buffer) + 1;
+
+	printk(KERN_INFO "%s: Received %zu characters from userspace; read "
+	       "%d.\n", DEVICE_NAME, count, driver.message_length);
+	return count;
+}
+
+static int dev_release(struct inode *inodep, struct file *filep)
+{
+   printk(KERN_INFO "%s: Device successfully closed\n", DEVICE_NAME);
+   return 0;
+}
+
+///////////// MODULE FUNCTIONS ////////////////
+
 // Module initialization function.
 static int __init char_dev_init(void)
 {
 	int ret = 0;
+
+	// Specify file operation functions.
+	file_ops.open = dev_open;
+	file_ops.read = dev_read;
+	file_ops.write = dev_write;
+	file_ops.release = dev_release;
 
 	printk(KERN_INFO "Initializing char driver for %s\n", DEVICE_NAME);
 
