@@ -2,6 +2,8 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 
+MODULE_DESCRIPTION("Hello world module");
+
 static int hello_init(void) {
   printk("Hello world\n");
   return 0;
